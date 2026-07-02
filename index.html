@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Magazzino B — Gestione Posti Pallet</title>
+
+  <!-- Firebase Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <style>
+    /* ═══════════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════════ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --blue:       #1e40af;
+      --blue-dark:  #1e3a8a;
+      --blue-light: #dbeafe;
+      --green-bg:   #dcfce7;
+      --green-bd:   #16a34a;
+      --green-tx:   #14532d;
+      --orange-bg:  #ffedd5;
+      --orange-bd:  #ea580c;
+      --orange-tx:  #7c2d12;
+      --emerg-bg:   #fef9c3;
+      --emerg-bd:   #ca8a04;
+      --emerg-tx:   #713f12;
+      --gray-50:    #f8fafc;
+      --gray-100:   #f1f5f9;
+      --gray-200:   #e2e8f0;
+      --gray-400:   #94a3b8;
+      --gray-500:   #64748b;
+      --gray-700:   #334155;
+      --gray-900:   #0f172a;
+      --ochre:      #b45309;
+      --red:        #dc2626;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--gray-100);
+      min-height: 100vh;
+      color: var(--gray-900);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════ */
+    .header {
+      background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 100%);
+      color: white;
+      padding: 0 16px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      box-shadow: 0 2px 12px rgba(30,64,175,0.4);
+    }
+    .logo-wrap {
+      width: 36px; height: 36px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .header-title { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+    .header-sub   { font-size: 11px; opacity: 0.7; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .user-badge {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      gap: 5px;
+    }
+    .user-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
+    .header-btn {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 6px 13px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .header-btn:hover { background: rgba(255,255,255,0.25); }
+
+    /* ═══════════════════════════════════════════════════
+       STATS SECTION
+    ═══════════════════════════════════════════════════ */
+    .stats-section {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 14px 16px 16px;
+    }
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    /* Zone mini cards - scrollable row */
+    .zone-stats-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      margin-bottom: 14px;
+      scrollbar-width: none;
+    }
+    .zone-stats-row::-webkit-scrollbar { display: none; }
+    .zone-stat-card {
+      flex: 0 0 auto;
+      min-width: 80px;
+      background: var(--gray-50);
+      border: 1.5px solid var(--gray-200);
+      border-radius: 10px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+    .zone-stat-card.active-card { border-color: var(--blue); background: var(--blue-light); }
+    .zsc-label { font-size: 10px; color: var(--gray-500); font-weight: 600; margin-bottom: 3px; }
+    .zsc-pct   { font-size: 18px; font-weight: 800; color: var(--gray-900); line-height: 1; }
+    .zsc-count { font-size: 10px; color: var(--gray-400); margin-top: 3px; }
+    .zone-stat-card.inactive { opacity: 0.38; }
+
+    /* Total card */
+    .total-card {
+      background: var(--gray-50);
+      border: 2px solid var(--gray-200);
+      border-radius: 14px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .total-left { text-align: center; flex-shrink: 0; }
+    .total-lbl  { font-size: 10px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
+    .total-pct  { font-size: 36px; font-weight: 900; line-height: 1; transition: color 0.4s; }
+    .total-pct.clr-black  { color: var(--gray-900); }
+    .total-pct.clr-ochre  { color: var(--ochre); }
+    .total-pct.clr-red    { color: var(--red); }
+    .total-cnt  { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+    .total-right { flex: 1; }
+    .prog-bg {
+      background: var(--gray-200);
+      border-radius: 99px;
+      height: 10px;
+      overflow: hidden;
+      margin-bottom: 5px;
+    }
+    .prog-fill {
+      height: 100%;
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.6s ease, background 0.4s;
+    }
+    .prog-fill.clr-black  { background: var(--gray-700); }
+    .prog-fill.clr-ochre  { background: var(--ochre); }
+    .prog-fill.clr-red    { background: var(--red); }
+    .prog-markers {
+      display: flex;
+      justify-content: space-between;
+    }
+    .prog-markers span { font-size: 9px; color: var(--gray-400); }
+
+    /* ═══════════════════════════════════════════════════
+       ZONE SELECTOR
+    ═══════════════════════════════════════════════════ */
+    .zone-selector {
+      padding: 14px 16px;
+    }
+    .zone-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .zone-btn {
+      background: white;
+      border: 2px solid var(--gray-200);
+      border-radius: 16px;
+      padding: 14px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.18s;
+      position: relative;
+    }
+    .zone-btn:active { transform: scale(0.96); }
+    .zone-btn.active {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: white;
+      box-shadow: 0 4px 16px rgba(30,64,175,0.35);
+    }
+    .zone-btn.locked {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .zbtn-num   { font-size: 26px; font-weight: 900; line-height: 1; }
+    .zbtn-label { font-size: 10px; margin-top: 3px; opacity: 0.7; font-weight: 600; }
+    .zbtn-mini  { font-size: 10px; margin-top: 4px; opacity: 0.8; font-weight: 700; }
+
+    /* ═══════════════════════════════════════════════════
+       ZONE VIEW
+    ═══════════════════════════════════════════════════ */
+    .zone-view { display: none; padding: 0 16px 24px; }
+    .zone-view.open { display: block; }
+
+    .zone-view-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-top: 4px;
+    }
+    .zvh-title { font-size: 17px; font-weight: 800; color: var(--gray-900); }
+    .zvh-count { font-size: 12px; color: var(--gray-500); background: var(--gray-100); border: 1px solid var(--gray-200); padding: 4px 10px; border-radius: 20px; font-weight: 700; }
+
+    /* Legend */
+    .legend {
+      display: flex; gap: 14px; flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--gray-500); font-weight: 600; }
+    .leg-dot { width: 13px; height: 13px; border-radius: 4px; border: 2px solid; flex-shrink: 0; }
+    .leg-dot.free     { background: var(--green-bg);  border-color: var(--green-bd); }
+    .leg-dot.occupied { background: var(--orange-bg); border-color: var(--orange-bd); }
+    .leg-dot.emerg    { background: var(--emerg-bg);  border-color: var(--emerg-bd); }
+
+    /* Warehouse map */
+    .warehouse-map {
+      background: white;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 16px;
+      padding: 14px 12px;
+      overflow-x: auto;
+    }
+
+    .scaffold-block { margin-bottom: 14px; }
+    .scaffold-block:last-child { margin-bottom: 0; }
+    .scaffold-header {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 6px;
+      padding: 3px 0;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .pallet-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 4px 0;
+    }
+
+    /* Single pallet cell */
+    .pp {
+      width: 54px; height: 46px;
+      border-radius: 9px;
+      border: 2px solid;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s;
+      user-select: none;
+      line-height: 1.3;
+      text-align: center;
+    }
+    .pp:active { transform: scale(0.91); }
+    .pp.free {
+      background: var(--green-bg);
+      border-color: var(--green-bd);
+      color: var(--green-tx);
+    }
+    .pp.occupied {
+      background: var(--orange-bg);
+      border-color: var(--orange-bd);
+      color: var(--orange-tx);
+      box-shadow: 0 2px 6px rgba(234,88,12,0.2);
+    }
+    .pp.emerg {
+      background: var(--emerg-bg);
+      border-color: var(--emerg-bd);
+      color: var(--emerg-tx);
+    }
+    .pp.readonly { cursor: default; }
+    .pp.readonly:active { transform: none; }
+    .pp .pp-code  { font-size: 8px; font-weight: 900; }
+    .pp .pp-state { font-size: 10px; line-height: 1; }
+
+    /* ═══════════════════════════════════════════════════
+       LOGIN MODAL
+    ═══════════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,0.65);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 500;
+      padding: 20px;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal {
+      background: white;
+      border-radius: 22px;
+      padding: 30px 24px 24px;
+      width: 100%; max-width: 340px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+    }
+    .modal-icon  { font-size: 36px; text-align: center; margin-bottom: 10px; }
+    .modal-title { font-size: 21px; font-weight: 900; color: var(--gray-900); text-align: center; }
+    .modal-sub   { font-size: 13px; color: var(--gray-500); text-align: center; margin: 4px 0 22px; }
+    .m-input {
+      width: 100%;
+      padding: 13px 14px;
+      border: 2px solid var(--gray-200);
+      border-radius: 11px;
+      font-size: 15px;
+      margin-bottom: 10px;
+      outline: none;
+      transition: border-color 0.2s;
+      color: var(--gray-900);
+    }
+    .m-input:focus { border-color: var(--blue); }
+    .m-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--blue);
+      color: white;
+      border: none;
+      border-radius: 11px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 4px;
+    }
+    .m-btn:hover  { background: #1d4ed8; }
+    .m-btn:active { background: var(--blue-dark); }
+    .m-err { color: var(--red); font-size: 13px; text-align: center; margin-top: 10px; font-weight: 600; display: none; }
+    .m-cancel {
+      display: block; width: 100%; text-align: center;
+      padding: 10px; margin-top: 6px;
+      background: none; border: none; color: var(--gray-400);
+      font-size: 14px; cursor: pointer;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       TOAST
+    ═══════════════════════════════════════════════════ */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--gray-900); color: white;
+      padding: 10px 20px; border-radius: 99px;
+      font-size: 13px; font-weight: 600;
+      z-index: 600; transition: transform 0.3s ease;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ═══════════════════════════════════════════════════
+       LOADING
+    ═══════════════════════════════════════════════════ */
+    .loading-bar {
+      height: 3px;
+      background: linear-gradient(90deg, var(--blue), #60a5fa, var(--blue));
+      background-size: 200% 100%;
+      animation: loadSlide 1.4s infinite;
+    }
+    @keyframes loadSlide {
+      0%   { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── MODAL LOGIN ─────────────────────────────────── -->
+<div class="modal-overlay hidden" id="loginModal">
+  <div class="modal">
+    <div class="modal-icon">🔐</div>
+    <div class="modal-title">Accesso Operatore</div>
+    <div class="modal-sub">Area riservata alla modifica dei posti pallet</div>
+    <input class="m-input" type="text" id="mUser" placeholder="Nome utente" autocomplete="off" spellcheck="false">
+    <input class="m-input" type="password" id="mPass" placeholder="Password"
+           onkeydown="if(event.key==='Enter') doLogin()">
+    <button class="m-btn" onclick="doLogin()">Accedi</button>
+    <div class="m-err" id="mErr">❌ Credenziali non valide</div>
+    <button class="m-cancel" onclick="closeLogin()">Annulla</button>
+  </div>
+</div>
+
+<!-- ── TOAST ───────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── HEADER ─────────────────────────────────────── -->
+<header class="header">
+  <div class="logo-wrap" id="logoWrap">🏭</div>
+  <div>
+    <div class="header-title">Magazzino B</div>
+    <div class="header-sub">Gestione Posti Pallet</div>
+  </div>
+  <div class="header-right">
+    <div class="user-badge" id="userBadge">
+      <div class="user-dot"></div>
+      Logistica
+    </div>
+    <button class="header-btn" id="loginBtn"  onclick="openLogin()">Accedi</button>
+    <button class="header-btn" id="logoutBtn" onclick="doLogout()" style="display:none">Esci</button>
+  </div>
+</header>
+
+<!-- ── LOADING BAR ────────────────────────────────── -->
+<div class="loading-bar" id="loadingBar"></div>
+
+<!-- ── STATS ──────────────────────────────────────── -->
+<section class="stats-section">
+  <div class="section-label">Riepilogo Zone</div>
+
+  <!-- Zone mini cards -->
+  <div class="zone-stats-row" id="zoneStatsRow">
+    <div class="zone-stat-card" id="zsc1">
+      <div class="zsc-label">Zona 1</div>
+      <div class="zsc-pct"  id="z1pct">0%</div>
+      <div class="zsc-count" id="z1cnt">0/41</div>
+    </div>
+    <div class="zone-stat-card inactive">
+      <div class="zsc-label">Zona 2</div>
+      <div class="zsc-pct">—</div>
+      <div class="zsc-count">n.d.</div>
+    </div>
+    <div class="zone-stat-card inactive">
+      <div class="zsc-label">Zona 3</div>
+      <div class="zsc-pct">—</div>
+      <div class="zsc-count">n.d.</div>
+    </div>
+    <div class="zone-stat-card inactive">
+      <div class="zsc-label">Zona 4</div>
+      <div class="zsc-pct">—</div>
+      <div class="zsc-count">n.d.</div>
+    </div>
+    <div class="zone-stat-card inactive">
+      <div class="zsc-label">Zona 5</div>
+      <div class="zsc-pct">—</div>
+      <div class="zsc-count">n.d.</div>
+    </div>
+    <div class="zone-stat-card inactive">
+      <div class="zsc-label">Zona 6</div>
+      <div class="zsc-pct">—</div>
+      <div class="zsc-count">n.d.</div>
+    </div>
+  </div>
+
+  <!-- Total -->
+  <div class="total-card">
+    <div class="total-left">
+      <div class="total-lbl">Totale Magazzino</div>
+      <div class="total-pct clr-black" id="totalPct">0%</div>
+      <div class="total-cnt" id="totalCnt">0 / 41 p.p.</div>
+    </div>
+    <div class="total-right">
+      <div class="prog-bg">
+        <div class="prog-fill clr-black" id="progFill"></div>
+      </div>
+      <div class="prog-markers">
+        <span>0%</span><span style="color:var(--ochre)">50%</span>
+        <span style="color:var(--red)">75%</span><span>100%</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ZONE SELECTOR ──────────────────────────────── -->
+<section class="zone-selector">
+  <div class="section-label">Seleziona Zona</div>
+  <div class="zone-grid">
+    <div class="zone-btn" id="zb1" onclick="selectZone(1)">
+      <div class="zbtn-num">1</div>
+      <div class="zbtn-label">Zona 1</div>
+      <div class="zbtn-mini" id="zbmini1">0 / 41</div>
+    </div>
+    <div class="zone-btn locked" id="zb2">
+      <div class="zbtn-num">2</div>
+      <div class="zbtn-label">In arrivo</div>
+    </div>
+    <div class="zone-btn locked" id="zb3">
+      <div class="zbtn-num">3</div>
+      <div class="zbtn-label">In arrivo</div>
+    </div>
+    <div class="zone-btn locked" id="zb4">
+      <div class="zbtn-num">4</div>
+      <div class="zbtn-label">In arrivo</div>
+    </div>
+    <div class="zone-btn locked" id="zb5">
+      <div class="zbtn-num">5</div>
+      <div class="zbtn-label">In arrivo</div>
+    </div>
+    <div class="zone-btn locked" id="zb6">
+      <div class="zbtn-num">6</div>
+      <div class="zbtn-label">In arrivo</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ZONE 1 VIEW ────────────────────────────────── -->
+<section class="zone-view" id="zoneView1">
+  <div class="zone-view-header">
+    <div class="zvh-title">📦 Zona 1</div>
+    <div class="zvh-count" id="zv1Count">0 / 41 occupati</div>
+  </div>
+
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot free"></div>Libero</div>
+    <div class="leg-item"><div class="leg-dot occupied"></div>Occupato</div>
+    <div class="leg-item"><div class="leg-dot emerg"></div>Emergenza</div>
+  </div>
+
+  <div class="warehouse-map" id="map1">
+    <!-- Rendered by JS -->
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════ -->
+<script>
+// ────────────────────────────────────────────────────
+//  ⚙️  FIREBASE CONFIG  — sostituisci con i tuoi dati
+// ────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId:         "YOUR_PROJECT",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ────────────────────────────────────────────────────
+//  CREDENZIALI OPERATORE
+// ────────────────────────────────────────────────────
+const CREDS = { user: 'Logistica', pass: 'postipallet26' };
+
+// ────────────────────────────────────────────────────
+//  DATI ZONA 1  (41 posti pallet, da PDF mag1.pdf)
+//  NB: i codici individuali vanno confermati con i
+//      tuoi codici di ubicazione reali
+// ────────────────────────────────────────────────────
+const ZONE1 = {
+  key:   'z1',
+  name:  'Zona 1',
+  total: 41,          // posti normali (contano per la %)
+  scaffolds: [
+    {
+      label: 'Scaffale A',
+      levels: [
+        { lbl: 'A — Livello 01 (terra)', positions: [
+            { id:'B01A0101', code:'B01A01\n#1' },
+            { id:'B01A0102', code:'B01A01\n#2' },
+            { id:'B01A0103', code:'B01A01\n#3' },
+        ]},
+        { lbl: 'A — Livello 02 (1° piano)', positions: [
+            { id:'B01A0201', code:'B01A02\n#1' },
+            { id:'B01A0202', code:'B01A02\n#2' },
+            { id:'B01A0203', code:'B01A02\n#3' },
+        ]},
+      ]
+    },
+    {
+      label: 'Scaffale B',
+      levels: [
+        { lbl: 'B — Livello 01 (terra)', positions: [
+            { id:'B01B0101', code:'B01B01\n#1' },
+            { id:'B01B0102', code:'B01B01\n#2' },
+            { id:'B01B0103', code:'B01B01\n#3' },
+        ]},
+        { lbl: 'B — Livello 02 (1° piano)', positions: [
+            { id:'B01B0201', code:'B01B02\n#1' },
+            { id:'B01B0202', code:'B01B02\n#2' },
+            { id:'B01B0203', code:'B01B02\n#3' },
+        ]},
+        { lbl: 'B — Livello 03 (2° piano)', positions: [
+            { id:'B01B0301', code:'B01B03\n#1' },
+            { id:'B01B0302', code:'B01B03\n#2' },
+            { id:'B01B0303', code:'B01B03\n#3' },
+        ]},
+      ]
+    },
+    {
+      label: 'Scaffale C',
+      levels: [
+        { lbl: 'C — Livello 01 (terra) · 13 posti', positions: [
+            { id:'B01C0101', code:'B01C01\n#1'  },
+            { id:'B01C0102', code:'B01C01\n#2'  },
+            { id:'B01C0103', code:'B01C01\n#3'  },
+            { id:'B01C0104', code:'B01C01\n#4'  },
+            { id:'B01C0105', code:'B01C01\n#5'  },
+            { id:'B01C0106', code:'B01C01\n#6'  },
+            { id:'B01C0107', code:'B01C01\n#7'  },
+            { id:'B01C0108', code:'B01C01\n#8'  },
+            { id:'B01C0109', code:'B01C01\n#9'  },
+            { id:'B01C0110', code:'B01C01\n#10' },
+            { id:'B01C0111', code:'B01C01\n#11' },
+            { id:'B01C0112', code:'B01C01\n#12' },
+            { id:'B01C0113', code:'B01C01\n#13' },
+        ]},
+        { lbl: 'C — Livello 02 (1° piano)', positions: [
+            { id:'B01C0201', code:'B01C02\n#1' },
+            { id:'B01C0202', code:'B01C02\n#2' },
+            { id:'B01C0203', code:'B01C02\n#3' },
+        ]},
+      ]
+    },
+    {
+      label: 'Scaffale D',
+      levels: [
+        { lbl: 'D — Livello 01 (terra)', positions: [
+            { id:'B01D0101', code:'B01D01\n#1' },
+            { id:'B01D0102', code:'B01D01\n#2' },
+            { id:'B01D0103', code:'B01D01\n#3' },
+        ]},
+        { lbl: 'D — Livello 02 (1° piano)', positions: [
+            { id:'B01D0201', code:'B01D02\n#1' },
+            { id:'B01D0202', code:'B01D02\n#2' },
+            { id:'B01D0203', code:'B01D02\n#3' },
+        ]},
+      ]
+    },
+    {
+      label: 'Scaffale E',
+      levels: [
+        { lbl: 'E — Livello 01 (terra) · 4 posti', positions: [
+            { id:'B01E0101', code:'B01E01\n#1' },
+            { id:'B01E0102', code:'B01E01\n#2' },
+            { id:'B01E0103', code:'B01E01\n#3' },
+            { id:'B01E0104', code:'B01E01\n#4' },
+        ]},
+      ]
+    },
+  ]
+};
+
+// ────────────────────────────────────────────────────
+//  STATE
+// ────────────────────────────────────────────────────
+let isLoggedIn  = false;
+let activeZone  = null;
+let palletState = {};   // { palletId: 'free' | 'occupied' | 'emerg' }
+
+// ────────────────────────────────────────────────────
+//  FIREBASE SYNC
+// ────────────────────────────────────────────────────
+function initSync() {
+  db.ref('magazzino/z1').on('value', snap => {
+    palletState = snap.val() || {};
+    updateStats();
+    if (activeZone === 1) renderMap1();
+    hideLoading();
+  });
+}
+
+function setPallet(id, state) {
+  db.ref('magazzino/z1/' + id).set(state);
+}
+
+// ────────────────────────────────────────────────────
+//  STATS
+// ────────────────────────────────────────────────────
+function allIds(zoneData) {
+  const ids = [];
+  for (const sc of zoneData.scaffolds)
+    for (const lv of sc.levels)
+      for (const p of lv.positions)
+        ids.push(p.id);
+  return ids;
+}
+
+function updateStats() {
+  const ids = allIds(ZONE1);
+  const occ = ids.filter(id => palletState[id] === 'occupied').length;
+  const tot = ZONE1.total;
+  const pct = tot > 0 ? Math.round(occ / tot * 100) : 0;
+
+  // Mini card Z1
+  document.getElementById('z1pct').textContent = pct + '%';
+  document.getElementById('z1cnt').textContent = occ + '/' + tot;
+  document.getElementById('zbmini1').textContent = occ + ' / ' + tot;
+  document.getElementById('zv1Count').textContent = occ + ' / ' + tot + ' occupati';
+
+  // Total (solo zona 1 per ora)
+  const clr = pct <= 50 ? 'clr-black' : pct <= 75 ? 'clr-ochre' : 'clr-red';
+
+  const tpct = document.getElementById('totalPct');
+  tpct.textContent = pct + '%';
+  tpct.className = 'total-pct ' + clr;
+
+  document.getElementById('totalCnt').textContent = occ + ' / ' + tot + ' p.p.';
+
+  const fill = document.getElementById('progFill');
+  fill.style.width = pct + '%';
+  fill.className = 'prog-fill ' + clr;
+}
+
+// ────────────────────────────────────────────────────
+//  RENDER MAPPA ZONA 1
+// ────────────────────────────────────────────────────
+function renderMap1() {
+  const map = document.getElementById('map1');
+  map.innerHTML = '';
+
+  for (const sc of ZONE1.scaffolds) {
+    const block = document.createElement('div');
+    block.className = 'scaffold-block';
+
+    // Scaffold header
+    const hdr = document.createElement('div');
+    hdr.className = 'scaffold-header';
+    hdr.textContent = sc.label;
+    block.appendChild(hdr);
+
+    for (const lv of sc.levels) {
+      // Level label
+      const lvLbl = document.createElement('div');
+      lvLbl.style.cssText = 'font-size:9px;color:var(--gray-400);font-weight:700;margin:5px 0 4px;text-transform:uppercase;letter-spacing:0.6px;';
+      lvLbl.textContent = lv.lbl;
+      block.appendChild(lvLbl);
+
+      const row = document.createElement('div');
+      row.className = 'pallet-row';
+
+      for (const p of lv.positions) {
+        const state = palletState[p.id] || 'free';
+        const cell  = document.createElement('div');
+        cell.className = 'pp ' + state + (isLoggedIn ? '' : ' readonly');
+        cell.id = 'pp_' + p.id;
+
+        // Icon + code
+        const icon = state === 'free' ? '🟢' : state === 'occupied' ? '🟠' : '⚠️';
+        cell.innerHTML = `<span class="pp-state">${icon}</span><span class="pp-code">${p.code}</span>`;
+
+        if (isLoggedIn) {
+          cell.addEventListener('click', () => onPalletClick(p.id));
+        } else {
+          cell.title = 'Accedi per modificare';
+        }
+        row.appendChild(cell);
+      }
+      block.appendChild(row);
+    }
+
+    map.appendChild(block);
+  }
+}
+
+function onPalletClick(id) {
+  const current = palletState[id] || 'free';
+  const next    = current === 'free' ? 'occupied' : 'free';
+  palletState[id] = next; // Optimistic update
+  setPallet(id, next);
+
+  // Fast local cell update
+  const cell = document.getElementById('pp_' + id);
+  if (cell) {
+    cell.className = 'pp ' + next;
+    const icon = next === 'free' ? '🟢' : '🟠';
+    cell.innerHTML = `<span class="pp-state">${icon}</span><span class="pp-code">${id.replace('B01','').replace(/([A-Z])(\d{2})(\d{2})/,'$1$2\n#$3')}</span>`;
+    cell.addEventListener('click', () => onPalletClick(id));
+  }
+
+  updateStats();
+  showToast(next === 'occupied' ? '🟠 Posto segnato come OCCUPATO' : '🟢 Posto segnato come LIBERO');
+}
+
+// ────────────────────────────────────────────────────
+//  ZONE SELECTOR
+// ────────────────────────────────────────────────────
+function selectZone(n) {
+  // Toggle
+  if (activeZone === n) {
+    activeZone = null;
+    document.getElementById('zb' + n).classList.remove('active');
+    document.getElementById('zoneView' + n).classList.remove('open');
+    document.getElementById('zsc' + n).classList.remove('active-card');
+    return;
+  }
+
+  // Close previous
+  if (activeZone) {
+    document.getElementById('zb' + activeZone).classList.remove('active');
+    const prev = document.getElementById('zoneView' + activeZone);
+    if (prev) prev.classList.remove('open');
+    document.getElementById('zsc' + activeZone)?.classList.remove('active-card');
+  }
+
+  activeZone = n;
+  document.getElementById('zb' + n).classList.add('active');
+  document.getElementById('zsc' + n)?.classList.add('active-card');
+
+  const view = document.getElementById('zoneView' + n);
+  if (view) {
+    view.classList.add('open');
+    if (n === 1) renderMap1();
+    // Scroll to view
+    setTimeout(() => view.scrollIntoView({ behavior:'smooth', block:'start' }), 80);
+  }
+}
+
+// ────────────────────────────────────────────────────
+//  LOGIN
+// ────────────────────────────────────────────────────
+function openLogin() {
+  document.getElementById('loginModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('mUser').focus(), 100);
+}
+function closeLogin() {
+  document.getElementById('loginModal').classList.add('hidden');
+  document.getElementById('mErr').style.display = 'none';
+  document.getElementById('mUser').value = '';
+  document.getElementById('mPass').value = '';
+}
+function doLogin() {
+  const u = document.getElementById('mUser').value.trim();
+  const p = document.getElementById('mPass').value;
+  if (u === CREDS.user && p === CREDS.pass) {
+    isLoggedIn = true;
+    closeLogin();
+    document.getElementById('loginBtn').style.display  = 'none';
+    document.getElementById('logoutBtn').style.display = 'flex';
+    document.getElementById('userBadge').style.display = 'flex';
+    if (activeZone === 1) renderMap1();
+    showToast('✅ Accesso effettuato — Logistica');
+  } else {
+    document.getElementById('mErr').style.display = 'block';
+    document.getElementById('mPass').value = '';
+    document.getElementById('mPass').focus();
+  }
+}
+function doLogout() {
+  isLoggedIn = false;
+  document.getElementById('loginBtn').style.display  = 'flex';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('userBadge').style.display = 'none';
+  if (activeZone === 1) renderMap1();
+  showToast('👋 Uscita effettuata');
+}
+
+// ────────────────────────────────────────────────────
+//  TOAST
+// ────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ────────────────────────────────────────────────────
+//  LOADING BAR
+// ────────────────────────────────────────────────────
+function hideLoading() {
+  document.getElementById('loadingBar').style.display = 'none';
+}
+
+// ────────────────────────────────────────────────────
+//  BOOT
+// ────────────────────────────────────────────────────
+initSync();
+</script>
+</body>
+</html>
