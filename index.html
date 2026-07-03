@@ -432,9 +432,65 @@ const ZONES = [
   },
 
   // ── ZONE 3-6 (in arrivo) ───────────────────────
-  { key: 'z3', num: 3, name: 'Zona 3', active: false, total: 0, scaffolds: [], emergency: [] },
-  { key: 'z4', num: 4, name: 'Zona 4', active: false, total: 0, scaffolds: [], emergency: [] },
-  { key: 'z5', num: 5, name: 'Zona 5', active: false, total: 0, scaffolds: [], emergency: [] },
+  // ── ZONA 3 ─────────────────────────────────────
+  {
+    key: 'z3', num: 3, name: 'Zona 3', active: true, total: 15,
+    scaffolds: [
+      { label: 'B0400 — Scaffale A', levels: [
+        { lbl: 'B0400A01 · 4 posti', positions: genPos('B0400A01', 4) },
+        { lbl: 'B0400A02 · 3 posti', positions: genPos('B0400A02', 3) },
+      ]},
+      { label: 'B0400 — Scaffale R', levels: [
+        { lbl: 'B0400R01 · 5 posti', positions: genPos('B0400R01', 5) },
+        { lbl: 'B0400R02 · 3 posti', positions: genPos('B0400R02', 3) },
+      ]},
+    ],
+    emergency: genPos('Z3EMERG', 5)
+  },
+  // ── ZONA 4 ─────────────────────────────────────
+  {
+    key: 'z4', num: 4, name: 'Zona 4', active: true, total: 70,
+    scaffolds: [
+      { label: 'B0500 — Scaffale E', levels: [
+        { lbl: 'B0500E01 · 21 posti', positions: genPos('B0500E01', 21) },
+      ]},
+      { label: 'B0500 — Scaffale L', levels: [
+        { lbl: 'B0500L01 · 3 posti', positions: genPos('B0500L01', 3) },
+        { lbl: 'B0500L02 · 3 posti', positions: genPos('B0500L02', 3) },
+      ]},
+      { label: 'B0500 — Scaffale M', levels: [
+        { lbl: 'B0500M01 · 3 posti', positions: genPos('B0500M01', 3) },
+        { lbl: 'B0500M02 · 3 posti', positions: genPos('B0500M02', 3) },
+      ]},
+      { label: 'B0500 — Scaffale N', levels: [
+        { lbl: 'B0500N01 · 3 posti', positions: genPos('B0500N01', 3) },
+        { lbl: 'B0500N02 · 3 posti', positions: genPos('B0500N02', 3) },
+      ]},
+      { label: 'B0500 — Scaffale O', levels: [
+        { lbl: 'B0500O01 · 31 posti', positions: genPos('B0500O01', 31) },
+      ]},
+    ],
+    emergency: []
+  },
+  // ── ZONA 5 ─────────────────────────────────────
+  {
+    key: 'z5', num: 5, name: 'Zona 5', active: true, total: 104,
+    scaffolds: [
+      { label: 'B0500 — Scaffale F', levels: [
+        { lbl: 'B0500F01 · 36 posti', positions: genPos('B0500F01', 36) },
+      ]},
+      { label: 'B0500 — Scaffale G', levels: [
+        { lbl: 'B0500G01 · 12 posti', positions: genPos('B0500G01', 12) },
+      ]},
+      { label: 'B0500 — Scaffale H', levels: [
+        { lbl: 'B0500H01 · 41 posti', positions: genPos('B0500H01', 41) },
+      ]},
+      { label: 'B0500 — Scaffale I', levels: [
+        { lbl: 'B0500I01 · 15 posti', positions: genPos('B0500I01', 15) },
+      ]},
+    ],
+    emergency: []
+  },
   { key: 'z6', num: 6, name: 'Zona 6', active: false, total: 0, scaffolds: [], emergency: [] },
 ];
 
