@@ -334,6 +334,11 @@ function genPos(code, count) {
   }));
 }
 
+// Genera posizioni 1:1 (una cella per codice, per scaffali zona 6)
+function genCodes(...codes) {
+  return codes.map(code => ({ id: code, code: code }));
+}
+
 // ══════════════════════════════════════════════════
 //  DATI ZONE
 //  active: true  = zona attiva con dati
@@ -491,7 +496,70 @@ const ZONES = [
     ],
     emergency: []
   },
-  { key: 'z6', num: 6, name: 'Zona 6', active: false, total: 0, scaffolds: [], emergency: [] },
+  // ── ZONA 6 — SCAFFALI (non contano nella %) ────
+  {
+    key: 'z6', num: 6, name: 'Zona 6', active: true, total: 0, countOnly: true,
+    scaffolds: [
+      { label: 'B0200 — Scaffale F', levels: [
+        { lbl: 'B0200F', positions: genCodes('B0200F01','B0200F02','B0200F03','B0200F04','B0200F05') },
+      ]},
+      { label: 'B0200 — Scaffale H', levels: [
+        { lbl: 'B0200H', positions: genCodes('B0200H01','B0200H02','B0200H03','B0200H04','B0200H05') },
+      ]},
+      { label: 'B0300 — Scaffale A', levels: [
+        { lbl: 'B0300A', positions: genCodes('B0300A01','B0300A02','B0300A03','B0300A04') },
+      ]},
+      { label: 'B0400 — Scaffale B', levels: [
+        { lbl: 'B0400B', positions: genCodes('B0400B01') },
+      ]},
+      { label: 'B0400 — Scaffale C', levels: [
+        { lbl: 'B0400C', positions: genCodes('B0400C01','B0400C02','B0400C03','B0400C04','B0400C05','B0400C06') },
+      ]},
+      { label: 'B0400 — Scaffale D', levels: [
+        { lbl: 'B0400D', positions: genCodes('B0400D01','B0400D02','B0400D03','B0400D04','B0400D05') },
+      ]},
+      { label: 'B0400 — Scaffale E', levels: [
+        { lbl: 'B0400E', positions: genCodes('B0400E01','B0400E02','B0400E03','B0400E04','B0400E05') },
+      ]},
+      { label: 'B0400 — Scaffale F', levels: [
+        { lbl: 'B0400F', positions: genCodes('B0400F01','B0400F02','B0400F03','B0400F04','B0400F05') },
+      ]},
+      { label: 'B0400 — Scaffale G', levels: [
+        { lbl: 'B0400G', positions: genCodes('B0400G01','B0400G02','B0400G03','B0400G04','B0400G05') },
+      ]},
+      { label: 'B0400 — Scaffale H', levels: [
+        { lbl: 'B0400H', positions: genCodes('B0400H01') },
+      ]},
+      { label: 'B0400 — Scaffale I', levels: [
+        { lbl: 'B0400I', positions: genCodes('B0400I01','B0400I02','B0400I03','B0400I04','B0400I05') },
+      ]},
+      { label: 'B0400 — Scaffale J', levels: [
+        { lbl: 'B0400J', positions: genCodes('B0400J01','B0400J02','B0400J03','B0400J04','B0400J05') },
+      ]},
+      { label: 'B0400 — Scaffale K', levels: [
+        { lbl: 'B0400K', positions: genCodes('B0400K01','B0400K02','B0400K03','B0400K04','B0400K05') },
+      ]},
+      { label: 'B0400 — Scaffale L', levels: [
+        { lbl: 'B0400L', positions: genCodes('B0400L01','B0400L02','B0400L03','B0400L04','B0400L05') },
+      ]},
+      { label: 'B0400 — Scaffale M', levels: [
+        { lbl: 'B0400M', positions: genCodes('B0400M01','B0400M02','B0400M03','B0400M04','B0400M05') },
+      ]},
+      { label: 'B0400 — Scaffale N', levels: [
+        { lbl: 'B0400N', positions: genCodes('B0400N01','B0400N02','B0400N03','B0400N04','B0400N05') },
+      ]},
+      { label: 'B0400 — Scaffale O', levels: [
+        { lbl: 'B0400O', positions: genCodes('B0400O01') },
+      ]},
+      { label: 'B0400 — Scaffale P', levels: [
+        { lbl: 'B0400P', positions: genCodes('B0400P01','B0400P02','B0400P03','B0400P04','B0400P05','B0400P06','B0400P07','B0400P08','B0400P09') },
+      ]},
+      { label: 'B0400 — Scaffale Q', levels: [
+        { lbl: 'B0400Q', positions: genCodes('B0400Q01','B0400Q03','B0400Q04','B0400Q05','B0400Q06','B0400Q07','B0400Q08','B0400Q09') },
+      ]},
+    ],
+    emergency: []
+  },
 ];
 
 // ══════════════════════════════════════════════════
@@ -609,24 +677,34 @@ function updateStats() {
 
   for (const z of ZONES) {
     if (!z.active) continue;
-    const states = allStates[z.key] || {};
-    const occ    = getAllPos(z).filter(p => states[p.id] === 'occupied').length;
-    const pct    = z.total > 0 ? Math.round(occ / z.total * 100) : 0;
+    const states   = allStates[z.key] || {};
+    const allPos   = getAllPos(z);
+    const occ      = allPos.filter(p => states[p.id] === 'occupied').length;
 
-    document.getElementById('zpct' + z.num).textContent = pct + '%';
-    document.getElementById('zcnt' + z.num).textContent = occ + '/' + z.total;
-    const mini = document.getElementById('zbmini' + z.num);
-    if (mini) mini.textContent = occ + ' / ' + z.total;
-    const det = document.getElementById('zv' + z.num + 'Count');
-    if (det) det.textContent = occ + ' / ' + z.total + ' occupati';
-
-    grandTotal += z.total;
-    grandOcc   += occ;
+    if (z.countOnly) {
+      // Zona 6 scaffali — mostra conteggio grezzo, non incide sulla %
+      const displayTotal = allPos.length;
+      document.getElementById('zpct' + z.num).textContent = '📦';
+      document.getElementById('zcnt' + z.num).textContent = occ + '/' + displayTotal + ' scaff.';
+      const mini = document.getElementById('zbmini' + z.num);
+      if (mini) mini.textContent = occ + ' / ' + displayTotal;
+      const det = document.getElementById('zv' + z.num + 'Count');
+      if (det) det.textContent = occ + ' / ' + displayTotal + ' occupati';
+    } else {
+      const pct = z.total > 0 ? Math.round(occ / z.total * 100) : 0;
+      document.getElementById('zpct' + z.num).textContent = pct + '%';
+      document.getElementById('zcnt' + z.num).textContent = occ + '/' + z.total;
+      const mini = document.getElementById('zbmini' + z.num);
+      if (mini) mini.textContent = occ + ' / ' + z.total;
+      const det = document.getElementById('zv' + z.num + 'Count');
+      if (det) det.textContent = occ + ' / ' + z.total + ' occupati';
+      grandTotal += z.total;
+      grandOcc   += occ;
+    }
   }
 
   const pct = grandTotal > 0 ? Math.round(grandOcc / grandTotal * 100) : 0;
   const clr = pct <= 50 ? 'clr-black' : pct <= 75 ? 'clr-ochre' : 'clr-red';
-
   const tEl = document.getElementById('totalPct');
   tEl.textContent = pct + '%';
   tEl.className = 'total-pct ' + clr;
